@@ -1,0 +1,211 @@
+# Getting started with Kubernetes
+
+Quick introduction to Kubernetes, usable on your local machine.
+
+*Requires: linux, docker*
+ 
+
+## Install K3D
+
+The following command will install the K3D CLI.
+The K3D cli is a commandline tool to install and manage a local K3D cluster.
+
+K3S is a lightweight Kubernetes distro, suitable for using on a local machine.
+K3D is K3S running in docker.
+
+$ curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+
+
+## Create your first kubernetes cluster (k3d)
+$ k3d cluster create my-first-cluster
+
+
+## Explore your cluster
+
+Now, we want to look around your cluster. We can start with checking what K3D can do...
+$ k3d --help
+
+And now, let's see your clusters:
+$ k3d cluster list
+
+
+
+
+## Learning kubectl
+To explore a bit further, let's install the kubectl tool. This is a commandline tool to manage a Kubernetes instance.
+
+$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+
+
+### Getting help
+$ kubectl --help
+
+
+
+### See nodes
+Node are most often a physical or virtual server, but do not have to be. Your local k3d can run multiple nodes if you want.
+
+$ kubectl get nodes
+
+
+
+### Check what's running in your cluster
+$ kubectl get all
+
+This will list most of your deployments - but not all. For some reason, all is not always *all*
+
+We can also get specific type of resources
+
+$ kubectl get pods
+
+
+
+### It looks like stuff is missing?
+Deployments in kubernetes can be split into separate namespaces. By default, we will only see content  in the "default" namespace. We can try another namespace with the -n flag (--help is your friend). 
+
+$ kubectl get all -n no-such-namespace
+
+No luck? That is probably becase "no-suck-namespace" does not exist. Try listing the namespaces:
+
+$ kubectl get namespaces
+
+Or just list resources in all namespaces. -A is a utility flag for --all-namespaces. Again, help is your friend.
+
+$ kubectl get all -A
+
+
+
+## kubectl get commands ##
+
+These are some common used "get commands" for Kubectl to fetch names on pods, services, secrets etc. 
+
+kubectl get pod
+kubectl get pod --watch
+kubectl get pod -o wide
+kubectl get service
+kubectl get secret
+kubectl get all | grep mongodb
+
+
+## kubectl debugging commands ##
+
+So sometimes we need to check whats wrong with the pods or services for instance, with some debugging commands we can see some errors.
+We use these commands to search for errors in the pods, services etc.
+
+kubectl describe pod <pod-name>
+kubectl describe service <service-name>
+kubectl logs <pod-name>
+
+
+
+## Helm ##
+
+Helm is a package manager for K8s and it can be used to “define, install, and upgrade K8s applications” (Helm). 
+This package manager reduces redundancy through its “Helm Charts” feature. 
+This feature allows to bundle all the yaml files that are required by K8s for deployment (Secret, Configmap, Deployment.yaml, etc.) into a single chart.
+Helm also allows to edit already created charts or make your chart.
+
+Prerequisites:
+The following prerequisites are required for a successful and properly secured use of Helm. (Helm docs)
+
+1. A Kubernetes cluster
+2. Deciding what security configurations to apply to your installation, if any
+3. Installing and configuring Helm.
+
+So after Prerequisites are checked we begin with installation.
+
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+
+Or for the brave souls all the cmds at once. Recommended!
+
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+Once you have Helm ready, you can add a chart repository. Check Artifact Hub for available Helm chart repositories.
+
+Add a repo.
+$ helm repo add bitnami https://charts.bitnami.com/bitnami
+
+To update the repos.
+$ helm repo update
+
+Once this is added, you will be able to list the charts you can install.
+$ helm search repo bitnami
+
+You can always check the different flags or what you can do with helm cmd in the help section.
+
+$ helm --help
+
+
+
+## Making a Deployment using Helm ##
+
+We will install nginx for testing purposes with helm now. First we search for bitnami repo nginx.
+Showed results.
+
+$ helm search repo bitnami/nginx
+
+NAME                                    CHART VERSION   APP VERSION     DESCRIPTION                                       
+bitnami/nginx                           15.0.0          1.25.0          NGINX Open Source is a web server that can be a...
+bitnami/nginx-ingress-controller        9.7.1           1.7.1           NGINX Ingress Controller is an Ingress controll...
+bitnami/nginx-intel                     2.1.15          0.4.9           DEPRECATED NGINX Open Source for Intel is a lig...
+
+We will use bitnami/nginx. we must add a name or use --generate name, we will use nginx as a name.
+
+$ helm install nginx bitnami/nginx
+NAME: nginx
+LAST DEPLOYED: Fri May 26 10:42:17 2023
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: nginx
+CHART VERSION: 15.0.0
+APP VERSION: 1.25.0
+
+** Please be patient while the chart is being deployed **
+NGINX can be accessed through the following DNS name from within your cluster:
+
+    nginx.default.svc.cluster.local (port 80)
+
+To access NGINX from outside the cluster, follow the steps below:
+
+1. Get the NGINX URL by running these commands:
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        Watch the status with: 'kubectl get svc --namespace default -w nginx'
+
+    export SERVICE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].port}" services nginx)
+    export SERVICE_IP=$(kubectl get svc --namespace default nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "http://${SERVICE_IP}:${SERVICE_PORT}"
+
+
+# Now we shall something new in our default namespace.
+We can use the grep command to show everything with the nginx name in the default namespace. 
+
+$ kubectl get all | grep nginx
+
+pod/nginx-6ddf7bd8b-snncd                                    1/1     Running            0               4m37s
+service/nginx                                     LoadBalancer   10.43.73.44     172.19.0.2    80:30821/TCP                   4m37s
+deployment.apps/nginx                                 1/1     1            1           4m37s
+replicaset.apps/nginx-6ddf7bd8b                                  1         1         1       4m37s
+
+# Now we have a nginx service we can connect to. 
+We will use the port-forwarding command to enter the service.
+
+$ kubectl port-forward svc/nginx 8080:80
+Forwarding from 127.0.0.1:8080 -> 8080
+Forwarding from [::1]:8080 -> 8080
+Handling connection for 8080
+Handling connection for 8080
+
+here we have to use port 8080, because we cant access port 80 on our machine.
+
+So we can go to http://localhost:8080 and here is the nginx up and running.
+
+
+
