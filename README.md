@@ -1,4 +1,4 @@
-# Installing A Kubernetes Bundle With Monitoring And CI/CD Features
+# Overview of some Components Fabled are using.
 
 We are 2 students who made a journey with Fabled. On our journey we struggled at the beginning with k8s. 
 Thats why we decided to make this k8s 101 file for helping people like us to get to know k8s a little bit better.
